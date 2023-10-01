@@ -1,18 +1,18 @@
 import csv
 import json
 import os
-from typing import List
+from typing import List, Optional
 
 import pandas as pd
 from fastapi import APIRouter, UploadFile, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
-from sqlalchemy import insert, select
+from sqlalchemy import insert, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_async_session
 from src.file_management.models import file_info
 from src.file_management.schemas import FileInfoInDB, SortOrderEnum
-from src.file_management.utils import get_all_file_info_db
+from src.file_management.utils import get_all_file_info_db, get_file_db
 
 router = APIRouter()
 
@@ -80,13 +80,7 @@ async def fetch_data(
     if filter_by and filter_values and len(filter_by) != len(filter_values):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Number of filter values must match number of filter columns.")
 
-    select_query = select(file_info)
-    if file_name:
-        select_query = select_query.where(file_info.c.file_name == file_name)
-    elif file_id:
-        select_query = select_query.where(file_info.c.id == file_id)
-    file = await session.execute(select_query)
-    file = file.fetchone()
+    file: Optional[FileInfoInDB] = await get_file_db(file_name=file_name, file_id=file_id, session=session)
     if file is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found.")
 
@@ -110,3 +104,27 @@ async def fetch_data(
     data = json.loads(df_json)
     json_string = json.dumps(data, ensure_ascii=False)
     return JSONResponse(status_code=status.HTTP_200_OK, content=json_string)
+
+
+@router.delete('/delete_file', response_class=JSONResponse)
+async def delete_file(
+        file_name: str = None,
+        file_id: int = None,
+        session: AsyncSession = Depends(get_async_session),
+):
+    if not file_name and not file_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Either 'file_id' or 'file_name' is required.")
+    if file_id and file_name:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only one of 'file_id' or 'file_name' can be provided.")
+
+    file: Optional[FileInfoInDB] = await get_file_db(file_name=file_name, file_id=file_id, session=session)
+    if file is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found.")
+    delete_query = delete(file_info).where(file_info.c.id == file.id)
+    await session.execute(delete_query)
+    await session.commit()
+
+    file_path = f"datasets/{file.file_name}"
+    os.remove(file_path)
+
+    return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "File deleted successfully."})
