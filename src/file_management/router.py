@@ -14,10 +14,36 @@ from src.file_management.models import file_info
 from src.file_management.schemas import FileInfoInDB, SortOrderEnum
 from src.file_management.utils import get_all_file_info_db, get_file_db
 
-router = APIRouter()
+router = APIRouter(
+    tags=['File Management']
+)
 
 
-@router.post("/upload_file", response_class=JSONResponse)
+@router.post(
+    "/upload_file",
+    response_class=JSONResponse,
+    summary="Upload a CSV file",
+    description="Upload a CSV file, store it on the server, and record information in a database.",
+    response_description="File upload status",
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_201_CREATED: {
+            "content": {
+                "application/json": {
+                    "example": {"message": "File uploaded successfully."}
+                }
+            }
+        },
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Bad Request - The request is invalid or the file format is not supported.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "File must be a CSV file."}
+                }
+            }
+        }
+    }
+)
 async def upload_file(file: UploadFile, session: AsyncSession = Depends(get_async_session)):
     if file.content_type != 'text/csv':
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV file.")
@@ -44,7 +70,36 @@ async def upload_file(file: UploadFile, session: AsyncSession = Depends(get_asyn
     return JSONResponse(status_code=status.HTTP_201_CREATED, content={"message": "File uploaded successfully."})
 
 
-@router.get("/files")
+@router.get(
+    "/files",
+    summary="Get information about uploaded files",
+    description="Retrieve information about files that have been uploaded and recorded in the database.",
+    response_description="List of uploaded files",
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Successful response",
+            "content": {
+                "application/json": {
+                    "example": [
+                        {
+                            "id": 1,
+                            "file_name": "example1.csv",
+                            "uploaded_time": "2023-10-02 12:34:56",
+                            "column_names": ["model", "color", "cost"]
+                        },
+                        {
+                            "id": 2,
+                            "file_name": "example2.csv",
+                            "uploaded_time": "2023-10-02 13:45:00",
+                            "column_names": ["name", "age", "city"]
+                        }
+                    ]
+                }
+            }
+        }
+    }
+)
 async def get_file_info(session: AsyncSession = Depends(get_async_session)):
     files: List[FileInfoInDB] = await get_all_file_info_db(session=session)
     files_data = {
@@ -61,7 +116,50 @@ async def get_file_info(session: AsyncSession = Depends(get_async_session)):
     return JSONResponse(status_code=status.HTTP_200_OK, content=files_data)
 
 
-@router.post("/fetch_data")
+@router.post(
+    "/fetch_data",
+    summary="Fetch data from a CSV file",
+    description="Fetch, sort and filter data from a CSV file.",
+    response_description="Fetched data",
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Successful response",
+            "content": {
+                "application/json": {
+                    "example": [
+                        {
+                            "column1": "value1",
+                            "column2": "value2",
+                            "column3": "value3"
+                        },
+                        {
+                            "column1": "value4",
+                            "column2": "value5",
+                            "column3": "value6"
+                        }
+                    ]
+                }
+            }
+        },
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Bad Request - Invalid input or parameter values.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Either 'file_id' or 'file_name' is required."}
+                }
+            }
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Not Found - File not found.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "File not found."}
+                }
+            }
+        },
+    },
+)
 async def fetch_data(
         file_name: str = None,
         file_id: int = None,
@@ -106,7 +204,40 @@ async def fetch_data(
     return JSONResponse(status_code=status.HTTP_200_OK, content=json_string)
 
 
-@router.delete('/delete_file', response_class=JSONResponse)
+@router.delete(
+    '/delete_file',
+    response_class=JSONResponse,
+    summary="Delete a file",
+    description="Delete a file by providing either its name or ID.",
+    response_description="File deletion status",
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_200_OK: {
+            "description": "File deleted successfully.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "File deleted successfully."}
+                }
+            },
+        },
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Bad Request - Invalid input or parameter values.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Only one of 'file_id' or 'file_name' can be provided."}
+                }
+            }
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Not Found - File not found.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "File not found."}
+                }
+            }
+        },
+    },
+)
 async def delete_file(
         file_name: str = None,
         file_id: int = None,

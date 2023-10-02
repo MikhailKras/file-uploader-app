@@ -10,7 +10,25 @@ app = FastAPI(title=APP_NAME)
 app.include_router(router_file_management)
 
 
-@app.get('/healthcheck', response_class=JSONResponse)
+@app.get(
+    '/healthcheck',
+    response_class=JSONResponse,
+    summary="Check the health of the service",
+    description="Check the health of the service to ensure it is working properly.",
+    response_description="Health check status",
+    tags=["Healthcheck"],
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Service is healthy.",
+            "content": {
+                "application/json": {
+                    "example": {"message": "It works!"}
+                }
+            }
+        },
+    },
+)
 async def get_healthcheck_response():
     return JSONResponse(status_code=status.HTTP_200_OK, content={'message': 'It works!'})
 
