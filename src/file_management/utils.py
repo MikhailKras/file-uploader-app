@@ -32,10 +32,12 @@ async def get_file_db(
         select_query = select_query.where(file_info.c.id == file_id)
     file = await session.execute(select_query)
     file = file.fetchone()
+    if file is None:
+        return file
     result = FileInfoInDB(
         id=file.id,
         file_name=file.file_name,
         uploaded_time=file.uploaded_time,
         column_names=file.column_names
     )
-    return result if file else None
+    return result
