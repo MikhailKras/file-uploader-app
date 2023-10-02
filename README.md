@@ -1,3 +1,7 @@
+# FileUploader app
+
+HTTP service for working with imported data in csv format
+
 # Deployment Instructions
 
 - Clone this git repo
