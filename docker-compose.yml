@@ -1,0 +1,42 @@
+version: "3.7"
+services:
+  postgres_db:
+    image: postgres:15
+    restart: always
+    container_name: postgres_container
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - ../file_uploader_data/pg_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASS}
+      - PGUSER=${DB_USER}
+      - POSTGRES_DB=${DB_NAME_TEST}
+
+
+  app:
+    build: .
+    restart: always
+    container_name: app_container
+    command:
+      - sh
+      - -c
+      - |
+        alembic upgrade head
+        uvicorn src.main:app --host 0.0.0.0 --port 5678
+    ports:
+      - "5678:5678"
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl -f http://localhost:5678/healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 1
+    volumes:
+      - ../file_uploader_data/datasets:/datasets
