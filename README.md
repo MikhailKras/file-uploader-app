@@ -64,7 +64,7 @@ Check the health of the service to ensure it is working properly.
 
 ```bash
 curl -X 'GET' \
-  'http://0.0.0.0:8765/healthcheck' \
+  'http://0.0.0.0:5678/healthcheck' \
   -H 'accept: application/json'
 ```
 
