@@ -55,7 +55,7 @@ async def upload_file(file: UploadFile, session: AsyncSession = Depends(get_asyn
     with open(file_path, "wb") as buffer:
         buffer.write(await file.read())
 
-    with open(file_path, "r") as f:
+    with open(file_path, "r", encoding="latin1") as f:
         reader = csv.DictReader(f)
         column_names = reader.fieldnames
 
@@ -183,7 +183,7 @@ async def fetch_data(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found.")
 
     file_path = f"datasets/{file.file_name}"
-    df = pd.read_csv(file_path)
+    df = pd.read_csv(file_path, encoding="latin1")
 
     if sort_by:
         try:
