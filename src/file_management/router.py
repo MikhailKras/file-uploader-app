@@ -198,10 +198,9 @@ async def fetch_data(
                 df = df[df[column].str.contains(filter_value)]
             except KeyError:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid filter column name: {column}")
-    df_json = df.to_json(orient="records", index=False)
-    data = json.loads(df_json)
-    json_string = json.dumps(data, ensure_ascii=False)
-    return JSONResponse(status_code=status.HTTP_200_OK, content=json_string)
+    df = df.fillna('')
+    df_json = df.to_dict(orient="records")
+    return JSONResponse(status_code=status.HTTP_200_OK, content=df_json)
 
 
 @router.delete(
